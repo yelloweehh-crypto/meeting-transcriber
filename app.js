@@ -116,6 +116,47 @@ $('summarize').onclick = () => {
     ['經費與採購', /預算|費用|經費|採購|報價/],
     ['設備與物資', /設備|器材|物資|麥克風/],
   ];
+  const testScript = /測試/.test(source) && /收音|播放/.test(source)
+    && /語音辨識|轉錄準確度/.test(source) && /如果|請確認/.test(source);
+  if (testScript) {
+    const checks = [
+      ['麥克風收音', [
+        [/聲調|發音組合/, '以不同聲調與發音組合檢查收音清晰度'],
+        [/綠色區/, '將輸入音量維持在穩定的綠色區間'],
+        [/底噪.*迴音/, '檢查底噪與迴音'],
+      ]],
+      ['音訊播放', [
+        [/左右聲道/, '確認左右聲道的音量平衡'],
+        [/高音.*低音/, '檢查高低頻表現及是否破音'],
+        [/斷訊.*延遲/, '確認播放過程有無斷訊、延遲或電流雜音'],
+      ]],
+      ['中文轉錄', [
+        [/數字序列|測試數字/, '以數字序列檢查辨識準確度'],
+        [/標點符號/, '核對標點、專有名詞及語句的前後文關聯'],
+      ]],
+    ];
+    const number = source.match(/測試編號[為是：:\s]*(\d+)/)?.[1];
+    const details = checks.flatMap(([heading, items]) => {
+      const points = items.filter(([pattern]) => pattern.test(source)).map(([, point]) => point);
+      return points.length ? ['• ' + heading + '：' + points.join('，') + '。'] : [];
+    });
+    minutes.value = [
+      '中文語音與音訊設備測試紀錄',
+      ...(number ? ['測試編號：' + number] : []),
+      '',
+      '測試目的',
+      '檢查音訊設備的收音與播放品質，以及中文語音轉錄的準確度。',
+      '',
+      '測試重點',
+      ...details,
+      '',
+      '結果與後續',
+      '實測結果待確認。依上述條件檢查音訊品質，並比對原始錄音或朗讀稿，核對疑似誤辨的詞句。',
+    ].join('\n');
+    notice.textContent = '已整理測試紀錄，請核對後再下載。';
+    return;
+  }
+
   const discussion = new Map();
   const addDiscussion = line => {
     const topic = topics.find(([, pattern]) => pattern.test(line))?.[0] ?? '其他討論';

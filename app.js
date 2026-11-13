@@ -117,7 +117,7 @@ $('summarize').onclick = () => {
   button.disabled = true;
   notice.textContent = '載入本機摘要模型，首次使用需要下載…';
   try {
-    job = new Worker('./summarize.js', { type: 'module' });
+    job = new Worker('./summarize.js?v=5', { type: 'module' });
     job.onmessage = ({ data }) => {
       if (data.progress) {
         notice.textContent = data.progress;
@@ -134,3 +134,4 @@ $('summarize').onclick = () => {
     finish('無法啟動摘要工具，請重新整理頁面。');
   }
 };
+

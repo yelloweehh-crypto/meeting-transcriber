@@ -108,82 +108,31 @@ $('summarize').onclick = () => {
   const minutes = $('minutes');
   if (minutes.value !== minutes.defaultValue && !confirm('要以新初稿取代目前的會議紀錄嗎？')) return;
 
-  const topics = [
-    ['場地安排', /場地|會場|地點|球場/],
-    ['活動時程', /時間|時程|改期|日期|週[一二三四五六日]|星期/],
-    ['公告與通知', /公告|通知|發布|宣傳/],
-    ['人力分工', /人力|分工|志工|值班/],
-    ['經費與採購', /預算|費用|經費|採購|報價/],
-    ['設備與物資', /設備|器材|物資|麥克風/],
-  ];
-  const testScript = /測試/.test(source) && /收音|播放/.test(source)
-    && /語音辨識|轉錄準確度/.test(source) && /如果|請確認/.test(source);
-  if (testScript) {
-    const checks = [
-      ['麥克風收音', [
-        [/聲調|發音組合/, '以不同聲調與發音組合檢查收音清晰度'],
-        [/綠色區/, '將輸入音量維持在穩定的綠色區間'],
-        [/底噪.*迴音/, '檢查底噪與迴音'],
-      ]],
-      ['音訊播放', [
-        [/左右聲道/, '確認左右聲道的音量平衡'],
-        [/高音.*低音/, '檢查高低頻表現及是否破音'],
-        [/斷訊.*延遲/, '確認播放過程有無斷訊、延遲或電流雜音'],
-      ]],
-      ['中文轉錄', [
-        [/數字序列|測試數字/, '以數字序列檢查辨識準確度'],
-        [/標點符號/, '核對標點、專有名詞及語句的前後文關聯'],
-      ]],
-    ];
-    const number = source.match(/測試編號[為是：:\s]*(\d+)/)?.[1];
-    const details = checks.flatMap(([heading, items]) => {
-      const points = items.filter(([pattern]) => pattern.test(source)).map(([, point]) => point);
-      return points.length ? ['• ' + heading + '：' + points.join('，') + '。'] : [];
-    });
-    minutes.value = [
-      '中文語音與音訊設備測試紀錄',
-      ...(number ? ['測試編號：' + number] : []),
-      '',
-      '測試目的',
-      '檢查音訊設備的收音與播放品質，以及中文語音轉錄的準確度。',
-      '',
-      '測試重點',
-      ...details,
-      '',
-      '結果與後續',
-      '實測結果待確認。依上述條件檢查音訊品質，並比對原始錄音或朗讀稿，核對疑似誤辨的詞句。',
-    ].join('\n');
-    notice.textContent = '已整理測試紀錄，請核對後再下載。';
-    return;
-  }
-
-  const discussion = new Map();
-  const addDiscussion = line => {
-    const topic = topics.find(([, pattern]) => pattern.test(line))?.[0] ?? '其他討論';
-    const clean = line.replace(/^(?:嗯+|呃+|那個|就是說|我覺得)[，、,\s]*/u, '');
-    const point = clean.replace(/^(?:我們)?(?:可以考慮|建議|提議)[，、,\s]*/u, '提案為')
-      .replace(/[。；]+$/u, '');
-    if (!point) return;
-    if (!discussion.has(topic)) discussion.set(topic, new Set());
-    discussion.get(topic).add(point);
+  const button = $('summarize');
+  button.disabled = true;
+  notice.textContent = '載入摘要模型，首次使用需下載…';
+  let job;
+  let timer;
+  const finish = message => {
+    clearTimeout(timer);
+    job?.terminate();
+    button.disabled = false;
+    notice.textContent = message;
   };
-  const decisions = [];
-  const actions = [];
-  for (const line of new Set(lines)) {
-    const tentative = /建議|提議|尚未|還沒|待確認|是否|要不要|[？?]/.test(line);
-    if (!tentative && /決議|確認通過|一致同意|正式定案/.test(line)) decisions.push(line);
-    else if (!tentative && /負責|截止|待辦|請.{1,24}(完成|提供|更新)/.test(line)) actions.push(line);
-    else addDiscussion(line);
+  try {
+    job = new Worker('./summarize.js?v=9', { type: 'module' });
+    timer = setTimeout(() => finish('整理逾時，可用較短的逐字稿重試。'), 240000);
+    job.onerror = () => finish('無法載入摘要工具，請重新整理後重試。');
+    job.onmessage = ({ data }) => {
+      if (data.progress) notice.textContent = data.progress;
+      else if (data.error) finish(data.error);
+      else if (data.minutes) {
+        minutes.value = data.minutes;
+        finish('已整理會議紀錄，請核對決議及待辦。');
+      }
+    };
+    job.postMessage(source.trim());
+  } catch {
+    finish('無法啟動摘要工具。');
   }
-  const section = (heading, items) =>
-    [heading, ...(items.length ? items.map(line => '• ' + line) : ['待確認'])].join('\n');
-  minutes.value = [
-    section('討論摘要', [...discussion].map(([topic, points]) => {
-      const relevant = [...points].filter(point => ![...points].some(other => other !== point && other.includes(point)));
-      return topic + '：' + relevant.join('；') + '。';
-    })),
-    section('可能的決議（請核對）', decisions),
-    section('可能的待辦（請核對）', actions),
-  ].join('\n\n');
-  notice.textContent = '已依議題整理初稿，請核對後再下載。';
 };

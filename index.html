@@ -13,6 +13,12 @@
 <h2>選取錄音</h2>
 <label for="audio">錄音檔（例如 M4A、MP3、WAV）</label>
 <input id="audio" type="file" accept="audio/*,.m4a,.mp3,.wav">
+<label for="mode">轉錄模式</label>
+<select id="mode">
+<option value="base">標準（Whisper Base）</option>
+<option value="small">電腦高精準（Whisper Small）</option>
+</select>
+<p>高精準模式首次下載較大，處理時間也可能較長。</p>
 <div><button id="start" disabled>開始轉錄</button> <button id="stop" disabled>停止</button></div>
 <p id="status" role="status">請先選取錄音。</p>
 <progress id="progress" aria-label="轉錄進度" max="1" value="0"></progress>
@@ -23,7 +29,9 @@
 <button data-export="transcript">下載逐字稿</button>
 </section>
 <section>
-<h2><label for="minutes">會議紀錄模板</label></h2>
+<h2><label for="minutes">會議紀錄</label></h2>
+<button id="summarize">從逐字稿擷取會議紀錄初稿</button>
+<p id="minutes-status" role="status"></p>
 <textarea id="minutes">會議名稱
 日期
 出席者

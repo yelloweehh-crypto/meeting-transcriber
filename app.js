@@ -1,6 +1,7 @@
 const $ = id => document.getElementById(id);
 const [audio, start, stop, status, progress, transcript] =
   ['audio', 'start', 'stop', 'status', 'progress', 'transcript'].map($);
+const mode = $('mode');
 let worker;
 
 audio.onchange = () => {
@@ -11,7 +12,7 @@ audio.onchange = () => {
 function finish(message) {
   worker?.terminate?.();
   worker = undefined;
-  audio.disabled = false;
+  audio.disabled = mode.disabled = false;
   start.disabled = !audio.files.length;
   stop.disabled = true;
   status.textContent = message;
@@ -27,7 +28,8 @@ start.onclick = async () => {
   const file = audio.files[0];
   if (!file) return;
   if (transcript.value.trim() && !confirm('開始新轉錄會清除目前的逐字稿。繼續嗎？')) return;
-  start.disabled = audio.disabled = true;
+  const model = mode.value;
+  start.disabled = audio.disabled = mode.disabled = true;
   stop.disabled = false;
   progress.value = 0;
   status.textContent = '讀取錄音中…';
@@ -50,7 +52,7 @@ start.onclick = async () => {
         const source = decoded.getChannelData(channel);
         for (let i = 0; i < samples.length; i++) samples[i] += source[offset + i] / decoded.numberOfChannels;
       }
-      job.postMessage(samples, [samples.buffer]);
+      job.postMessage({ samples, model }, [samples.buffer]);
     };
     job = new Worker('./transcribe.js', { type: 'module' });
     worker = job;
@@ -96,3 +98,36 @@ for (const button of document.querySelectorAll('[data-export]')) {
   };
 }
 
+
+$('summarize').onclick = () => {
+  const lines = transcript.value.trim().split(/\n+/).map(line => line.trim()).filter(Boolean);
+  const notice = $('minutes-status');
+  if (!lines.length) {
+    notice.textContent = '請先完成轉錄或貼上逐字稿。';
+    return;
+  }
+  const minutes = $('minutes');
+  if (minutes.value !== minutes.defaultValue && !confirm('要以新的初稿取代目前的會議紀錄嗎？')) return;
+  const decisions = [];
+  const actions = [];
+  const discussion = [];
+  for (const line of new Set(lines)) {
+    if (/尚未|待確認|還沒|建議|提議|是否|要不要|[？?]/.test(line)) {
+      discussion.push(line);
+    } else if (/決議|確認通過|一致同意|正式定案/.test(line)) {
+      decisions.push(line);
+    } else if (/負責|請.{1,20}(完成|提供|更新|確認)|截止|待辦/.test(line)) {
+      actions.push(line);
+    } else {
+      discussion.push(line);
+    }
+  }
+  const section = (title, items) => [title, ...(items.length ? items.map(line => '• ' + line) : ['待確認'])].join('\n');
+  minutes.value = [
+    '會議名稱：待確認\n日期：待確認\n出席者：待確認',
+    section('討論摘錄', discussion),
+    section('可能的決議（請核對）', decisions),
+    section('可能的待辦（請核對負責人與期限）', actions),
+  ].join('\n\n');
+  notice.textContent = '已擷取初稿，請核對後再下載。';
+};

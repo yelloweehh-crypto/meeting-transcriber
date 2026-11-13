@@ -1,7 +1,6 @@
 const $ = id => document.getElementById(id);
 const [audio, start, stop, status, progress, transcript] =
   ['audio', 'start', 'stop', 'status', 'progress', 'transcript'].map($);
-const mode = $('mode');
 let worker;
 
 audio.onchange = () => {
@@ -12,7 +11,7 @@ audio.onchange = () => {
 function finish(message) {
   worker?.terminate?.();
   worker = undefined;
-  audio.disabled = mode.disabled = false;
+  audio.disabled = false;
   start.disabled = !audio.files.length;
   stop.disabled = true;
   status.textContent = message;
@@ -28,8 +27,7 @@ start.onclick = async () => {
   const file = audio.files[0];
   if (!file) return;
   if (transcript.value.trim() && !confirm('開始新轉錄會清除目前的逐字稿。繼續嗎？')) return;
-  const model = mode.value;
-  start.disabled = audio.disabled = mode.disabled = true;
+  start.disabled = audio.disabled = true;
   stop.disabled = false;
   progress.value = 0;
   status.textContent = '讀取錄音中…';
@@ -52,9 +50,9 @@ start.onclick = async () => {
         const source = decoded.getChannelData(channel);
         for (let i = 0; i < samples.length; i++) samples[i] += source[offset + i] / decoded.numberOfChannels;
       }
-      job.postMessage({ samples, model }, [samples.buffer]);
+      job.postMessage({ samples }, [samples.buffer]);
     };
-    job = new Worker('./transcribe.js?v=3', { type: 'module' });
+    job = new Worker('./transcribe.js?v=4', { type: 'module' });
     worker = job;
     job.onmessage = ({ data }) => {
       if (worker !== job) return;
@@ -100,35 +98,39 @@ for (const button of document.querySelectorAll('[data-export]')) {
 
 
 $('summarize').onclick = () => {
-  const lines = transcript.value.trim().split(/\n+/).map(line => line.trim()).filter(Boolean);
+  const text = transcript.value.replace(/^\s*\[\d{1,3}:\d{2}(?::\d{2})?\]\s*/gm, '').trim();
   const notice = $('minutes-status');
-  if (!lines.length) {
+  if (!text) {
     notice.textContent = '請先完成轉錄或貼上逐字稿。';
     return;
   }
   const minutes = $('minutes');
-  if (minutes.value !== minutes.defaultValue && !confirm('要以新的初稿取代目前的會議紀錄嗎？')) return;
-  const decisions = [];
-  const actions = [];
-  const discussion = [];
-  for (const line of new Set(lines)) {
-    if (/尚未|待確認|還沒|建議|提議|是否|要不要|[？?]/.test(line)) {
-      discussion.push(line);
-    } else if (/決議|確認通過|一致同意|正式定案/.test(line)) {
-      decisions.push(line);
-    } else if (/負責|請.{1,20}(完成|提供|更新|確認)|截止|待辦/.test(line)) {
-      actions.push(line);
-    } else {
-      discussion.push(line);
-    }
-  }
-  const section = (title, items) => [title, ...(items.length ? items.map(line => '• ' + line) : ['待確認'])].join('\n');
-  minutes.value = [
-    '會議名稱：待確認\n日期：待確認\n出席者：待確認',
-    section('討論摘錄', discussion),
-    section('可能的決議（請核對）', decisions),
-    section('可能的待辦（請核對負責人與期限）', actions),
-  ].join('\n\n');
-  notice.textContent = '已擷取初稿，請核對後再下載。';
-};
+  if (minutes.value !== minutes.defaultValue && !confirm('整理完成後要取代目前的會議紀錄嗎？')) return;
 
+  const button = $('summarize');
+  let job;
+  const finish = message => {
+    job?.terminate();
+    button.disabled = false;
+    notice.textContent = message;
+  };
+  button.disabled = true;
+  notice.textContent = '載入本機摘要模型，首次使用需要下載…';
+  try {
+    job = new Worker('./summarize.js', { type: 'module' });
+    job.onmessage = ({ data }) => {
+      if (data.progress) {
+        notice.textContent = data.progress;
+      } else if (data.error) {
+        finish(data.error);
+      } else {
+        minutes.value = data.minutes;
+        finish('已整理會議紀錄初稿，請核對後再下載。');
+      }
+    };
+    job.onerror = () => finish('無法載入摘要模型，請確認網路後重試。');
+    job.postMessage(text);
+  } catch {
+    finish('無法啟動摘要工具，請重新整理頁面。');
+  }
+};

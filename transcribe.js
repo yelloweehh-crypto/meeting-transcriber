@@ -5,9 +5,9 @@ env.allowLocalModels = false;
 env.backends.onnx.wasm.numThreads = 1;
 const traditional = OpenCC.Converter({ from: 'cn', to: 'twp' });
 let recognizer;
-self.onmessage = async ({ data: { samples, model } }) => {
+self.onmessage = async ({ data: { samples } }) => {
   try {
-    recognizer ??= await pipeline('automatic-speech-recognition', 'onnx-community/whisper-' + (model === 'small' ? 'small' : 'base'), {
+    recognizer ??= await pipeline('automatic-speech-recognition', 'onnx-community/whisper-small', {
       device: 'wasm',
       dtype: 'q8',
     });

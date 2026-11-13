@@ -108,21 +108,41 @@ $('summarize').onclick = () => {
   const minutes = $('minutes');
   if (minutes.value !== minutes.defaultValue && !confirm('要以新初稿取代目前的會議紀錄嗎？')) return;
 
-  const discussion = [];
+  const topics = [
+    ['場地安排', /場地|會場|地點|球場/],
+    ['活動時程', /時間|時程|改期|日期|週[一二三四五六日]|星期/],
+    ['公告與通知', /公告|通知|發布|宣傳/],
+    ['人力分工', /人力|分工|志工|值班/],
+    ['經費與採購', /預算|費用|經費|採購|報價/],
+    ['設備與物資', /設備|器材|物資|麥克風/],
+  ];
+  const discussion = new Map();
+  const addDiscussion = line => {
+    const topic = topics.find(([, pattern]) => pattern.test(line))?.[0] ?? '其他討論';
+    const clean = line.replace(/^(?:嗯+|呃+|那個|就是說|我覺得)[，、,\s]*/u, '');
+    const point = clean.replace(/^(?:我們)?(?:可以考慮|建議|提議)[，、,\s]*/u, '提案為')
+      .replace(/[。；]+$/u, '');
+    if (!point) return;
+    if (!discussion.has(topic)) discussion.set(topic, new Set());
+    discussion.get(topic).add(point);
+  };
   const decisions = [];
   const actions = [];
   for (const line of new Set(lines)) {
     const tentative = /建議|提議|尚未|還沒|待確認|是否|要不要|[？?]/.test(line);
     if (!tentative && /決議|確認通過|一致同意|正式定案/.test(line)) decisions.push(line);
     else if (!tentative && /負責|截止|待辦|請.{1,24}(完成|提供|更新)/.test(line)) actions.push(line);
-    else discussion.push(line);
+    else addDiscussion(line);
   }
   const section = (heading, items) =>
     [heading, ...(items.length ? items.map(line => '• ' + line) : ['待確認'])].join('\n');
   minutes.value = [
-    section('討論重點（摘錄）', discussion),
+    section('討論摘要', [...discussion].map(([topic, points]) => {
+      const relevant = [...points].filter(point => ![...points].some(other => other !== point && other.includes(point)));
+      return topic + '：' + relevant.join('；') + '。';
+    })),
     section('可能的決議（請核對）', decisions),
     section('可能的待辦（請核對）', actions),
   ].join('\n\n');
-  notice.textContent = '已擷取逐字稿初稿，請核對分類後再下載。';
+  notice.textContent = '已依議題整理初稿，請核對後再下載。';
 };

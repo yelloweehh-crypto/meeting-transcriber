@@ -120,8 +120,8 @@ $('summarize').onclick = () => {
     notice.textContent = message;
   };
   try {
-    job = new Worker('./summarize.js?v=9', { type: 'module' });
-    timer = setTimeout(() => finish('整理逾時，可用較短的逐字稿重試。'), 240000);
+    job = new Worker('./summarize.js?v=10', { type: 'module' });
+    timer = setTimeout(() => finish('整理逾時，請縮短逐字稿後重試。'), 240000);
     job.onerror = () => finish('無法載入摘要工具，請重新整理後重試。');
     job.onmessage = ({ data }) => {
       if (data.progress) notice.textContent = data.progress;
@@ -136,3 +136,5 @@ $('summarize').onclick = () => {
     finish('無法啟動摘要工具。');
   }
 };
+
+

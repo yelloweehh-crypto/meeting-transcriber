@@ -9,7 +9,7 @@ const instructions = '整理繁體中文會議紀錄。輸出三節：討論摘�
 self.onmessage = async ({ data: source }) => {
   try {
     const generate = await pipeline('text-generation', 'onnx-community/Qwen2.5-0.5B-Instruct', {
-      device: 'wasm', dtype: 'q4',
+      device: 'webgpu', dtype: 'q4',
       progress_callback: info => {
         if (info.status === 'progress' && Number.isFinite(info.progress)) {
           self.postMessage({ progress: '下載摘要模型… ' + Math.floor(info.progress) + '%' });
@@ -20,7 +20,7 @@ self.onmessage = async ({ data: source }) => {
       const result = await generate([
         { role: 'system', content: instructions },
         { role: 'user', content: text },
-      ], { max_new_tokens: 280, do_sample: false, return_full_text: false });
+      ], { max_new_tokens: 180, do_sample: false, return_full_text: false });
       const output = result[0].generated_text;
       const draft = typeof output === 'string' ? output : output?.at(-1)?.content;
       if (!draft?.trim()) throw new Error('Empty summary');
@@ -47,3 +47,4 @@ self.onmessage = async ({ data: source }) => {
     self.postMessage({ error: '摘要未完成，請確認網路或用較短的逐字稿重試。' });
   }
 };
+

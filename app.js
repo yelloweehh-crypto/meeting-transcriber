@@ -98,40 +98,31 @@ for (const button of document.querySelectorAll('[data-export]')) {
 
 
 $('summarize').onclick = () => {
-  const text = transcript.value.replace(/^\s*\[\d{1,3}:\d{2}(?::\d{2})?\]\s*/gm, '').trim();
   const notice = $('minutes-status');
-  if (!text) {
+  const source = transcript.value.replace(/\[\d{1,3}:\d{2}(?::\d{2})?\]/g, '');
+  const lines = source.split(/(?<=[。！？；])|\r?\n/).map(line => line.trim()).filter(Boolean);
+  if (!lines.length) {
     notice.textContent = '請先完成轉錄或貼上逐字稿。';
     return;
   }
   const minutes = $('minutes');
-  if (minutes.value !== minutes.defaultValue && !confirm('整理完成後要取代目前的會議紀錄嗎？')) return;
+  if (minutes.value !== minutes.defaultValue && !confirm('要以新初稿取代目前的會議紀錄嗎？')) return;
 
-  const button = $('summarize');
-  let job;
-  const finish = message => {
-    job?.terminate();
-    button.disabled = false;
-    notice.textContent = message;
-  };
-  button.disabled = true;
-  notice.textContent = '載入本機摘要模型，首次使用需要下載…';
-  try {
-    job = new Worker('./summarize.js?v=5', { type: 'module' });
-    job.onmessage = ({ data }) => {
-      if (data.progress) {
-        notice.textContent = data.progress;
-      } else if (data.error) {
-        finish(data.error);
-      } else {
-        minutes.value = data.minutes;
-        finish('已整理會議紀錄初稿，請核對後再下載。');
-      }
-    };
-    job.onerror = () => finish('無法載入摘要模型，請確認網路後重試。');
-    job.postMessage(text);
-  } catch {
-    finish('無法啟動摘要工具，請重新整理頁面。');
+  const discussion = [];
+  const decisions = [];
+  const actions = [];
+  for (const line of new Set(lines)) {
+    const tentative = /建議|提議|尚未|還沒|待確認|是否|要不要|[？?]/.test(line);
+    if (!tentative && /決議|確認通過|一致同意|正式定案/.test(line)) decisions.push(line);
+    else if (!tentative && /負責|截止|待辦|請.{1,24}(完成|提供|更新)/.test(line)) actions.push(line);
+    else discussion.push(line);
   }
+  const section = (heading, items) =>
+    [heading, ...(items.length ? items.map(line => '• ' + line) : ['待確認'])].join('\n');
+  minutes.value = [
+    section('討論重點（摘錄）', discussion),
+    section('可能的決議（請核對）', decisions),
+    section('可能的待辦（請核對）', actions),
+  ].join('\n\n');
+  notice.textContent = '已擷取逐字稿初稿，請核對分類後再下載。';
 };
-

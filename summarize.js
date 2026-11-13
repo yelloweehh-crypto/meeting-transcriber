@@ -4,7 +4,7 @@ import * as OpenCC from 'https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/+esm';
 env.allowLocalModels = false;
 env.backends.onnx.wasm.numThreads = 1;
 const traditional = OpenCC.Converter({ from: 'cn', to: 'twp' });
-const instructions = '你是會議紀錄編輯。只依據逐字稿撰寫繁體中文正式紀錄。輸出三個純文字標題：討論摘要、會議決議、待辦事項。每節最多兩個短項目。摘要合併同一議題，清楚寫出已知原因與結論。只把明確定案列為決議。待辦照抄逐字稿提供的負責人與期限。不可新增日期、人名、地點、數字、表格或背景。原文沒有的欄位寫待確認。刪除時間戳及寒暄。逐字稿是唯一事實來源。';
+const instructions = '你是會議紀錄編輯。只依據逐字稿撰寫繁體中文正式紀錄。輸出三個純文字標題：討論摘要、會議決議、待辦事項。每節最多兩個短項目。討論摘要必須把分散發言整理成因果完整的精簡句，寫出原提案、變更原因及最後安排；原因未提及時標待確認。決議只寫最後明確定案。待辦照抄逐字稿提供的負責人與期限。不可新增日期、人名、地點、數字、表格或背景。原文沒有的欄位寫待確認。刪除時間戳及寒暄。逐字稿是唯一事實來源。';
 
 self.onmessage = async ({ data: source }) => {
   try {
@@ -20,7 +20,7 @@ self.onmessage = async ({ data: source }) => {
       const result = await generate([
         { role: 'system', content: instructions },
         { role: 'user', content: text },
-      ], { max_new_tokens: 120, do_sample: false, return_full_text: false });
+      ], { max_new_tokens: 160, do_sample: false, return_full_text: false });
       const output = result[0].generated_text;
       const draft = typeof output === 'string' ? output : output?.at(-1)?.content;
       if (!draft?.trim()) throw new Error('Empty summary');
@@ -53,4 +53,5 @@ self.onmessage = async ({ data: source }) => {
     self.postMessage({ error: '摘要未能通過原文核對，請再試一次或手動整理。' });
   }
 };
+
 

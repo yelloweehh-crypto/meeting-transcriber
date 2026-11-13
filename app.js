@@ -120,7 +120,7 @@ $('summarize').onclick = () => {
     notice.textContent = message;
   };
   try {
-    job = new Worker('./summarize.js?v=11', { type: 'module' });
+    job = new Worker('./summarize.js?v=12', { type: 'module' });
     timer = setTimeout(() => finish('整理逾時，請縮短逐字稿後重試。'), 240000);
     job.onerror = () => finish('無法載入摘要工具，請重新整理後重試。');
     job.onmessage = ({ data }) => {
@@ -136,5 +136,6 @@ $('summarize').onclick = () => {
     finish('無法啟動摘要工具。');
   }
 };
+
 
 

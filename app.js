@@ -54,7 +54,7 @@ start.onclick = async () => {
       }
       job.postMessage({ samples, model }, [samples.buffer]);
     };
-    job = new Worker('./transcribe.js', { type: 'module' });
+    job = new Worker('./transcribe.js?v=3', { type: 'module' });
     worker = job;
     job.onmessage = ({ data }) => {
       if (worker !== job) return;
@@ -131,3 +131,4 @@ $('summarize').onclick = () => {
   ].join('\n\n');
   notice.textContent = '已擷取初稿，請核對後再下載。';
 };
+

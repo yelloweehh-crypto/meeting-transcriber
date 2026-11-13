@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>會議錄音轉錄</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f1f5f3;color:#16342b;font:16px/1.6 system-ui,sans-serif}main{max-width:760px;margin:auto;padding:clamp(16px,5vw,52px)}h1{font-size:clamp(32px,7vw,52px);line-height:1.15;margin-bottom:12px}h2{margin-top:0}section{background:white;border:1px solid #cadad3;border-radius:18px;padding:clamp(16px,4vw,28px);margin:20px 0}label,textarea,progress{display:block;width:100%}textarea{min-height:210px;padding:12px;border:1px solid #708d81;border-radius:8px;font:inherit;resize:vertical}button{min-height:44px;background:#15634d;color:white;border:0;border-radius:9px;padding:9px 16px;margin-top:12px;font:inherit;cursor:pointer}button:disabled{opacity:.55;cursor:default}input{max-width:100%;margin-top:8px}progress{accent-color:#15634d}#status{overflow-wrap:anywhere}
+</style>
+<main>
+<h1>會議錄音轉錄</h1>
+<p>在瀏覽器內把錄音轉成繁體中文逐字稿。首次使用會下載模型，處理時請保持頁面開啟。</p>
+<section>
+<h2>選取錄音</h2>
+<label for="audio">錄音檔（例如 M4A、MP3、WAV）</label>
+<input id="audio" type="file" accept="audio/*,.m4a,.mp3,.wav">
+<div><button id="start" disabled>開始轉錄</button> <button id="stop" disabled>停止</button></div>
+<p id="status" role="status">請先選取錄音。</p>
+<progress id="progress" aria-label="轉錄進度" max="1" value="0"></progress>
+</section>
+<section>
+<h2><label for="transcript">逐字稿</label></h2>
+<textarea id="transcript" placeholder="轉錄完成的段落會出現在這裡"></textarea>
+<button data-export="transcript">下載逐字稿</button>
+</section>
+<section>
+<h2><label for="minutes">會議紀錄模板</label></h2>
+<textarea id="minutes">會議名稱
+日期
+出席者
+
+討論議題
+
+決議
+
+待辦事項（事項／負責人／期限）
+</textarea>
+<button data-export="minutes">下載會議紀錄</button>
+</section>
+</main>
+<script type="module" src="./app.js"></script>
+</html>
